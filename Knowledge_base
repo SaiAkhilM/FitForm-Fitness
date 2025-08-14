@@ -1,0 +1,247 @@
+FitForm Fitness - Product Knowledge & Planning Document
+Company Overview
+Company Name: FitForm Fitness
+ Mission: AI-powered personal trainer that prevents sports injuries and enhances performance through real-time form correction
+ Achievement: Winner - Y Combinator AI Hackathon 2025, Best Use of Same.new Track (selected from 100+ teams)
+Problem We're Solving
+Statistics
+77 million Americans hold gym memberships (2024)
+31% of weight training injuries are caused by technical errors
+50% of tennis players develop tennis elbow at some point
+73% of gym injuries are preventable with proper form
+40% less muscle activation with poor technique
+Personal trainers cost $50-150/hour (accessibility barrier)
+Market Opportunity
+Wearable AI market projected to grow from $39B (2024) to $260B (2032)
+Massive untapped market of athletes and gym-goers without access to personal training
+B2B opportunity with gyms, sports teams, and fitness facilities
+
+Core Product Description
+FitForm Fitness is an AI personal trainer app that uses computer vision (phone camera) combined with wearable IMU sensors to provide real-time voice coaching on exercise form and technique. The system:
+Tracks body movement in real-time
+Provides instant voice feedback during exercises
+Learns individual body mechanics, technique variations, and user habits to offer personalized training advice
+Provides long-term progress and technique reports
+Works across every sport and exercise
+Technical Architecture
+Current Stack
+Computer Vision: MediaPipe for pose detection (open to alternatives)
+Voice Synthesis: ElevenLabs for real-time coaching
+AI/LLM: Anthropic Claude for reasoning and coaching logic
+Hardware: Custom IMU sensors (Bluetooth connection to phone)
+Backend: Supabase (planned)
+Mobile Development: React Native with Expo (planned)
+Development Tools: Cursor, Claude Code, Xcode
+Data Processing
+50-100 Hz IMU sampling rate
+Real-time angle and orientation tracking
+Acceleration and force production calculations
+Form quality scoring: 1-10 scale (with decimal precision)
+RAG system for exercise-specific coaching guidelines
+Core Features
+1. Real-Time Coaching
+Voice Feedback Timing:
+Critical safety corrections: During the rep (immediate)
+Minor corrections: End of rep or set
+User-customizable timing preferences
+Music Integration: Automatically lowers music volume during coaching
+Voice Customization: Gender, speed, accent options
+2. Exercise Tracking & Analysis
+Automatic rep counting and detection
+Rep quality scoring for each repetition
+Set summaries and workout analytics
+Progress tracking over time
+Exercise variation detection
+3. Personalized Training
+AI Adaptation: Learns individual technique patterns and optimal form based on:
+Athletic ability
+Experience level
+Range of motion
+Progress data
+Teaching Mode: Step-by-step instruction for new exercises
+Technique Experimentation: AI suggests technique variations for optimization
+4. Multi-Sport Support (Beta Launch)
+3-4 exercises/movements from these categories:
+Contact / Team Sports: Basketball, American Football, Rugby, Soccer
+Racquet / Bat Sports: Tennis, Pickleball, Baseball, Cricket, Ping Pong, Badminton
+Track & Field / Individual Sports: Throwing Events (Shot put, Discus, Javelin), Running Events (Sprints, Distance, Hurdles), Jumping Events (High jump, Long jump, Pole vault), Golf, Swimming, Cycling
+Strength & Flexibility Training:  Free weights (Dumbbells, Kettlebells, Barbell), Olympic Lifts, Powerlifts, Machines, Bodyweight, Resistance Bands, Cables, Yoga, Pilates
+Martial Arts / Combat Sports: Tae Kwon Do, Boxing, Wrestling, BJJ (Brazilian Jiu-Jitsu), etc
+Tennis Movements - Serve speed analysis, Swing path optimization, Footwork correction, Match performance tracking
+Golf Movements - Swing plane analysis, Club face tracking, Distance optimization, Putting stroke analysis
+5. Visual Feedback
+Live camera view with overlay (front or back camera)
+Visual form demonstration for each exercise
+Real-time body tracking visualization
+6. Hardware Integration
+Custom IMU sensors (wrist, elbow, ankle)
+One-button pairing process
+Disconnection alerts
+Camera-only mode (reduced accuracy)
+Future: Apple Watch & Fitbit integration
+User Experience Flow
+Onboarding
+User information collection:
+Fitness experience level
+Weight and baseline measurements
+Injuries/limitations (multiple choice + short answer)
+Training goals
+Sensor pairing (simple button press)
+Initial calibration
+During Workout
+Select or create workout plan
+Start recording session
+Receive real-time voice coaching
+Pause/resume capability
+Switch between exercises
+View form demonstrations
+Complete workout with summary
+Post-Workout
+Session summary with scores
+Progress tracking
+AI chat for form questions
+Optional video footage saving
+Business Model
+B2C Pricing
+Free Tier: 3 workouts/month, basic coaching
+Pro Tier: $10/month - unlimited usage
+Sensor Kit: $39-45 per sensor (wrist, elbow, ankle)
+B2B Pricing
+Custom quotes based on:
+Organization type (gym, sports team, trainer group)
+Number of users
+API usage
+Features:
+Team analytics dashboard
+Multi-coach management
+API access
+Bulk sensor pricing
+Target B2B Clients
+Sport academies 
+tennis academies
+High school/college sports teams
+National sports teams
+Personal trainers
+Pilates studios
+Yoga studios
+Martial arts dojos
+Combat sport gyms
+Strength training facilities (gyms)
+Competitive Differentiation
+vs. Lululemon Studio Mirror
+Portable - use anywhere with phone
+Hardware sensors for higher accuracy
+Personalized AI that adapts to individual mechanics
+1000s of exercises via RAG system
+vs. Tempo
+Not a home gym - portable coaching solution
+No smart weights required
+More affordable entry point
+Broader exercise library
+vs. Tonal
+No wall-mounted equipment
+Works with any weights/equipment
+Significantly lower cost
+Travel-friendly
+Unique Value Props
+Only solution with real-time voice coaching for form
+Combines accelerometer data with computer vision
+AI learns and adapts to individual body mechanics
+Certified personal training knowledge base
+Multi-sport capability in single platform
+Data & Privacy
+User Data Control
+Users choose whether to save workout footage
+Data deletion available in settings
+Health data export to Apple Health/Google Fit
+Medical & Legal
+HIPAA compliance required
+Terms include injury liability disclaimer
+Users advised to consult medical professionals
+No replacement for certified human trainers (complementary tool)
+Timeline & Current Status
+Current Status (August 13, 2025)
+Completed: Hackathon proof of concept
+Arduino circuit with IMU
+Basic computer vision with MediaPipe/OpenCV
+Web app demo (not fully integrated)
+Immediate Timeline
+August 15, 2025: Complete beta-ready app and hardware prototype
+Beta Testing Phase: 10-30 testers, 1-2 hour in-person sessions
+Beta Testing Plan
+Target Users
+10-30 beta testers
+Mix of fitness levels and sports interests
+In-person testing sessions (1-2 hours)
+Beta Features
+Free sensors provided to testers
+Core exercises from 3-4 sport categories
+Full coaching and tracking features
+Feedback collection system
+Future Features Roadmap
+Near-term
+Android app release
+iPad optimization
+Apple Watch companion app
+Workout import from other apps
+Gamification (badges, streaks, challenges)
+Social features (share workouts, compete)
+B2B client management interface
+Long-term
+Physical therapy/rehab mode
+Nutrition tracking integration
+Smart TV apps
+Live human trainer collaboration tools
+Data export capabilities
+Expanded sport library (priority TBD)
+White-label options (reconsidering)
+Marketing Positioning
+Key Messages
+"Your AI Personal Trainer That Sees Everything"
+Real-time voice coaching for perfect form
+Prevent injuries before they happen
+Works for beginners to pro athletes
+Complements (not replaces) human trainers
+Important Note
+DO NOT market as replacement for personal trainers
+Position as tool that helps trainers be more effective
+Emphasize collaboration with fitness professionals
+Questions Requiring Answers
+Hardware Specifications
+Specific IMU sensor brand/model selection
+Exact sampling rate confirmation
+Battery life specifications
+Waterproof/sweatproof rating
+Technical Architecture
+ML processing location (on-device vs cloud vs hybrid)
+Training methodology for form-checking models
+Data storage architecture (local vs cloud split)
+GDPR/CCPA compliance approach
+User Experience
+Detailed setup/onboarding process flow
+Weekly/monthly progress report format
+Multi-user management system for B2B
+Age restrictions and medical disclaimers
+Business Strategy
+Priority order for adding new sports
+Workout import capabilities from other apps
+Specific KPIs for beta success
+User retention targets
+Year 1 revenue targets
+Beta feedback metrics to track
+Product Development
+How to effectively train form-checking models for diverse body types
+B2B interface requirements for trainer/client relationships
+Beta Feedback Metrics to Track
+Suggested Metrics (Needs Confirmation)
+Form improvement rate over sessions
+User engagement (workouts per week)
+Feature usage analytics
+Voice coaching effectiveness
+Sensor connectivity reliability
+App stability and performance
+User satisfaction scores
+Exercise completion rates
+Injury prevention indicators
+
+This document serves as the living knowledge base for FitForm Fitness. It will be updated as decisions are made and development progresses.

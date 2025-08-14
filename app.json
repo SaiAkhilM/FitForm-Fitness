@@ -18,7 +18,9 @@
       "bundleIdentifier": "app.rork.fitform-fitness-app",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "NSBluetoothAlwaysUsageDescription": "Allow $(PRODUCT_NAME) to connect to fitness sensors",
+        "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to access location for Bluetooth scanning"
       }
     },
     "android": {
@@ -29,7 +31,10 @@
       "package": "app.rork.fitform-fitness-app",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN"
       ]
     },
     "web": {

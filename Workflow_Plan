@@ -1,0 +1,553 @@
+FitForm Fitness - Complete Development Guide for iOS Beta
+
+Phase 1: Project Setup & Foundation (2-3 hours)
+1.1 Development Environment Setup
+Tools Required:
+- Rork.com (initial UI/frontend)
+- GitHub repo (create immediately)
+- Cursor + Claude Code (backend logic)
+- Xcode (iOS specifics)
+- Supabase account- Integrated 
+- ElevenLabs API key
+- Anthropic API key
+
+Anthrophic
+Org number: 122c248d-ad10-43e1-86d9-164ab84a4f43
+Anthrophic API Key 
+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
+Eleven labs API key 
+Sk_dd75b59800771bd851cdbaebf23ff55540d12e70a61283a6
+
+
+- TestFlight setup
+1.2 GitHub Repository Structure
+fitform-fitness/
+├── app/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── screens/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   └── assets/
+├── hardware/
+│   ├── firmware/
+│   └── bluetooth/
+├── rag-system/
+│   ├── exercises/
+│   │   ├── tennis/
+│   │   ├── boxing/
+│   │   └── overhead-press/
+└── docs/
+1.3 Initial Rork Prompt - Phase 1
+Create a React Native Expo app called FitForm Fitness with these specifications:
+
+TECH STACK:
+- React Native with Expo (Dev Build configuration)
+- TypeScript
+- Supabase for backend
+- React Navigation for routing
+- React Native Reanimated for animations
+- React Native BLE Manager for Bluetooth
+- React Native Camera/Vision Camera for video
+
+INITIAL STRUCTURE:
+- Dark theme with electric blue (#00D4FF) and lime green (#00FF88) accents
+- Bottom tab navigation: Home, Workout, Progress, Profile
+- Implement basic authentication flow with Supabase
+- Create placeholder screens for each tab
+
+AUTHENTICATION:
+- Sign up with email/password
+- Login/logout functionality
+- Store user session in Supabase
+
+Include basic TypeScript interfaces for User, Workout, Exercise, and SensorData.
+
+Phase 2: Core UI Development (3-4 hours)
+2.1 Rork Prompt - Phase 2 (Onboarding & Profile)
+Add comprehensive onboarding flow to FitForm Fitness:
+
+ONBOARDING SCREENS (Stack Navigator):
+1. Welcome screen with app logo and "Get Started" button
+2. User info form:
+   - Name, age, height, weight
+   - Fitness level (Beginner/Intermediate/Advanced/Pro)
+   - Injuries checklist + text input for details
+   - Training goals (multiple selection)
+3. Sensor pairing tutorial screen (UI only for now)
+4. Calibration guide with illustrations
+
+PROFILE SETUP:
+- Store all onboarding data in Supabase user profile
+- Create user preferences for voice feedback timing
+- Add voice customization options (gender, speed)
+- Music integration toggle
+
+DESIGN:
+- Smooth transitions between screens
+- Progress indicator at top
+- Skip option for experienced users
+2.2 Rork Prompt - Phase 3 (Workout Interface)
+Create the main workout interface for FitForm Fitness:
+
+WORKOUT SELECTION SCREEN:
+- Three workout cards:
+  1. Tennis Training (Serve & Forehand)
+  2. Boxing Combo Workout
+  3. Dumbbell Overhead Press
+- Each card shows duration, difficulty, equipment needed
+
+WORKOUT SESSION SCREEN:
+- Camera view component (full screen background)
+- Overlay UI with:
+  - Exercise name and set/rep counter
+  - Form score indicator (1-10 scale)
+  - Pause/Resume button
+  - Switch camera button (front/back)
+  - End workout button
+- Semi-transparent cards for real-time feedback display
+
+CAMERA INTEGRATION:
+- Use React Native Vision Camera
+- 30fps recording
+- Front/back camera toggle
+- Add placeholder for MediaPipe pose detection overlay
+
+SENSOR STATUS BAR:
+- Show connected sensors (wrist, elbow, shoulder)
+- Connection strength indicators
+- Battery levels (mock data for now)
+2.3 Rork Prompt - Phase 4 (Progress & Analytics)
+Add progress tracking and analytics screens:
+
+PROGRESS DASHBOARD:
+- Weekly workout summary chart
+- Average form score trend
+- Total reps completed
+- Workout streak counter
+
+WORKOUT HISTORY:
+- List of completed workouts with:
+  - Date/time
+  - Exercises performed
+  - Average form scores
+  - Duration
+- Tap for detailed view
+
+DETAILED WORKOUT VIEW:
+- Set-by-set breakdown
+- Form score for each rep
+- AI coaching notes
+- Option to save/delete video clips
+
+ANALYTICS:
+- Form improvement graph over time
+- Most common mistakes list
+- Personal records section
+- Exercise-specific progress
+
+Phase 3: Backend & AI Integration (4-5 hours)
+3.1 Switch to Cursor - Backend Services
+At this point, export code from Rork and import to GitHub, then open in Cursor
+Cursor Prompt 1 - Supabase Schema
+Create Supabase database schema for FitForm Fitness with these tables:
+
+TABLES NEEDED:
+1. profiles (extends auth.users):
+   - user_id, name, age, height, weight, fitness_level, injuries, goals
+   
+2. workouts:
+   - id, user_id, started_at, ended_at, workout_type, average_form_score
+   
+3. exercises:
+   - id, workout_id, exercise_name, sets_completed, reps_completed
+   
+4. exercise_sets:
+   - id, exercise_id, set_number, reps, form_scores (array), feedback_notes
+   
+5. sensor_data:
+   - id, workout_id, timestamp, sensor_type, data_payload (JSONB)
+
+6. ai_feedback:
+   - id, exercise_set_id, feedback_type, message, severity, timestamp
+
+Create all necessary relationships, indexes, and RLS policies.
+Include migration files and TypeScript types.
+Cursor Prompt 2 - MediaPipe Integration
+Integrate MediaPipe Pose with React Native for real-time pose detection:
+
+REQUIREMENTS:
+- Use @mediapipe/pose with React Native
+- Process camera frames at 30fps
+- Extract 33 pose landmarks
+- Calculate key angles:
+  - Elbow flexion/extension
+  - Shoulder abduction/rotation
+  - Wrist deviation
+  
+Create a PoseDetectionService that:
+- Initializes MediaPipe
+- Processes video frames
+- Returns pose data with timestamps
+- Calculates joint angles in real-time
+- Handles front/back camera differences
+
+Output format:
+{
+  timestamp: number,
+  landmarks: Array<{x, y, z, visibility}>,
+  angles: {
+    leftElbow: number,
+    rightElbow: number,
+    leftShoulder: number,
+    rightShoulder: number,
+    leftWrist: number,
+    rightWrist: number
+  }
+}
+Cursor Prompt 3 - Bluetooth Sensor Integration
+Create Bluetooth Low Energy service for IMU sensor integration:
+
+SENSOR SPECIFICATIONS:
+- 3 sensors: wrist, elbow, shoulder
+- Data rate: 50-100Hz
+- Each sensor sends: accelerometer (x,y,z), gyroscope (x,y,z), quaternion
+
+BLUETOOTH SERVICE:
+- Auto-discover FitForm sensors
+- Connect to multiple sensors simultaneously
+- Handle connection drops gracefully
+- Buffer data for processing
+- Synchronize timestamps with phone clock
+
+DATA PROCESSING:
+- Combine IMU data with MediaPipe poses
+- Apply complementary filter for orientation
+- Calculate joint angles from IMU
+- Detect rep start/end points
+- Real-time velocity and acceleration
+
+Create services for:
+1. BluetoothManager (connection handling)
+2. SensorDataProcessor (raw data to angles)
+3. DataSynchronizer (align IMU + camera data)
+3.2 AI Coach Integration
+Cursor Prompt 4 - AI Coaching System
+Implement AI coaching system using Anthropic Claude:
+
+CORE COMPONENTS:
+1. FormAnalyzer class:
+   - Compare current form to ideal form
+   - Detect form deviations
+   - Calculate form score (1-10)
+   - Identify critical vs minor errors
+
+2. CoachingEngine:
+   - Process form analysis results
+   - Generate contextual feedback
+   - Prioritize safety-critical corrections
+   - Adapt to user's skill level
+
+3. VoiceFeedbackService:
+   - Integrate ElevenLabs API
+   - Queue coaching messages
+   - Handle music ducking
+   - Manage feedback timing (immediate/end-of-rep/end-of-set)
+
+FEEDBACK LOGIC:
+- Critical errors: Immediate voice alert
+- Minor corrections: After rep completion
+- Positive reinforcement: After good reps
+- Summary: End of each set
+
+Include prompt templates for Claude API that analyze form data and generate coaching feedback.
+Cursor Prompt 5 - RAG System Setup
+Create RAG system for exercise-specific coaching:
+
+STRUCTURE:
+Each exercise needs a comprehensive knowledge file with:
+1. Ideal form parameters (joint angles, positions)
+2. Common mistakes and corrections
+3. Safety considerations
+4. Progression suggestions
+5. Biomechanical principles
+
+EXERCISES TO IMPLEMENT:
+1. Tennis Serve:
+   - Toss position, racquet path, contact point
+   - Shoulder rotation, elbow extension
+   - Common errors: low toss, bent arm, poor timing
+
+2. Boxing Combo (Jab-Cross-Hook):
+   - Stance, guard position, punch mechanics
+   - Hip rotation, weight transfer
+   - Common errors: dropping hands, overreaching
+
+3. Dumbbell Overhead Press:
+   - Starting position, press path, lockout
+   - Shoulder stability, elbow tracking
+   - Common errors: arching back, flared elbows
+
+Create a KnowledgeBase class that:
+- Loads exercise data
+- Provides context to AI coach
+- Updates based on user's patterns
+- Supports technique variations
+
+Phase 4: Hardware Integration (3-4 hours)
+4.1 Hardware Firmware Updates
+Arduino/ESP32 Firmware Requirements
+cpp
+// Sensor Configuration
+- Sample rate: 100Hz
+- BLE advertising name: "FitForm_[TYPE]_[ID]"
+- Types: WRIST, ELBOW, SHOULDER
+- Data packet structure:
+  {
+    timestamp: uint32,
+    accel: {x, y, z},
+    gyro: {x, y, z},
+    quaternion: {w, x, y, z},
+    battery: uint8
+  }
+
+// BLE Services
+- Device Info Service
+- Battery Service
+- IMU Data Service (custom UUID)
+- Calibration Service
+
+// Features needed:
+- Auto-reconnect
+- Low power mode
+- Calibration routine
+- LED status indicators
+4.2 Hardware-Software Bridge
+Cursor Prompt 6 - Complete Integration
+Create the final integration layer between hardware and app:
+
+DATA FUSION:
+1. TimeSyncService:
+   - Synchronize sensor clocks with phone
+   - Handle clock drift
+   - Maintain millisecond accuracy
+
+2. DataFusionEngine:
+   - Combine IMU + MediaPipe data
+   - Weight sensor confidence based on movement type
+   - Apply Kalman filter for smooth tracking
+   - Handle missing data gracefully
+
+3. RepetitionDetector:
+   - Identify exercise phases
+   - Count reps automatically
+   - Detect pause points
+   - Track range of motion
+
+REAL-TIME PIPELINE:
+- Sensor data (100Hz) → Buffer
+- Camera frames (30fps) → MediaPipe
+- Fused data → Form Analyzer
+- Analysis → AI Coach
+- Coach → Voice Feedback
+- All data → Supabase (batch upload)
+
+Total latency target: <100ms
+
+Phase 5: Exercise Implementation (2-3 hours)
+5.1 Exercise-Specific Logic
+Cursor Prompt 7 - Exercise Implementations
+Implement specific logic for each beta exercise:
+
+TENNIS SERVE:
+- Phases: Ready, Toss, Load, Contact, Follow-through
+- Key metrics: Toss height, racquet speed, contact point
+- Form checks: Shoulder rotation, elbow extension, balance
+- Coaching cues: "Toss higher", "Extend arm fully", "Rotate shoulders"
+
+BOXING COMBO:
+- Detect punch types: Jab, Cross, Hook
+- Measure: Speed, power, guard return time
+- Form checks: Hip rotation, guard position, stance
+- Coaching cues: "Keep guard up", "Rotate hips", "Don't overreach"
+
+OVERHEAD PRESS:
+- Phases: Setup, Press, Lockout, Lower
+- Key metrics: Bar path, tempo, shoulder stability
+- Form checks: Back position, elbow path, wrist alignment
+- Coaching cues: "Core tight", "Elbows forward", "Full lockout"
+
+Create ExerciseManager that loads appropriate rules for each exercise.
+5.2 RAG Content Creation
+Research & Content Development
+For each exercise, create comprehensive coaching documents:
+
+SOURCES TO RESEARCH:
+- PubMed for biomechanics studies
+- NSCA/ACE certification materials
+- Professional coaching videos
+- Sports science journals
+
+CONTENT STRUCTURE (Markdown):
+# [Exercise Name]
+## Ideal Form Parameters
+- Joint angles at each phase
+- Timing and tempo
+- Body position requirements
+
+## Common Mistakes
+1. [Mistake]: [Detection method], [Correction]
+2. ...
+
+## Safety Considerations
+- Pre-requisites
+- Injury risks
+- Modifications for limitations
+
+## Coaching Progressions
+- Beginner cues
+- Intermediate refinements
+- Advanced optimizations
+
+Store in /rag-system/exercises/[exercise-name]/
+
+Phase 6: Testing & Deployment (2-3 hours)
+6.1 Internal Testing Checklist
+Functionality Tests
+User can complete onboarding
+All three exercises load properly
+Camera feed displays correctly
+Sensors connect via Bluetooth
+Pose detection overlay works
+Form scoring calculates correctly
+Voice feedback plays on time
+Workout saves to database
+Progress charts display data
+Performance Tests
+App maintains 30fps during workout
+Sensor data processes without lag
+Voice feedback latency <100ms
+No memory leaks during long sessions
+Battery usage acceptable
+Edge Cases
+Sensor disconnection handling
+Poor lighting conditions
+Network interruption
+Background/foreground transitions
+Music app integration
+6.2 TestFlight Deployment
+Xcode Final Steps
+1. Open project in Xcode
+2. Configure signing & capabilities
+3. Set bundle identifier: com.fitformfitness.app
+4. Update Info.plist:
+   - Camera usage description
+   - Bluetooth usage description
+   - Microphone usage description
+   
+5. Build for release:
+   - Product > Archive
+   - Distribute App > TestFlight
+   - Upload to App Store Connect
+   
+6. TestFlight Setup:
+   - Add beta tester emails
+   - Write test notes
+   - Set test duration
+   - Send invites
+6.3 Beta Testing Session Checklist
+Pre-Session Setup
+Charge all sensors
+Install latest app version
+Prepare consent forms
+Setup recording equipment
+Test WiFi/connectivity
+During Session (Per Tester)
+Onboarding completion time
+Sensor pairing success
+Exercise selection process
+Form detection accuracy
+Voice feedback relevance
+User confusion points
+Technical issues encountered
+Overall satisfaction rating
+Metrics to Track
+Form improvement over session
+Number of coaching cues given
+User engagement level
+Technical issues frequency
+Feature requests
+UI/UX pain points
+
+Phase 7: Data Streaming Architecture
+Optimal Configuration
+Recommended: WebSocket for real-time streaming
+Low latency (<50ms)
+Bidirectional communication
+Handles multiple sensor streams
+Alternatives:
+BLE Direct: Higher battery usage
+HTTP Polling: Too slow for 100Hz
+MQTT: Good but more complex
+
+Critical Migration Points
+When to Switch from Rork to Cursor:
+After Phase 2.3 (Progress & Analytics screens) - approximately 6-7 hours in
+What Stays in Rork:
+Initial UI/UX prototyping
+Basic navigation structure
+Simple component creation
+What Moves to Cursor/Xcode:
+Bluetooth integration
+MediaPipe processing
+AI/LLM integration
+Complex state management
+Native iOS features
+Performance optimization
+
+Day-by-Day Execution Timeline
+Day 1 - August 14
+9:00 AM - 12:00 PM
+Project setup, GitHub repo
+Rork Phases 1-2 (Foundation & Core UI)
+12:00 PM - 3:00 PM
+Rork Phase 3-4 (Workout & Progress UI)
+Export to GitHub
+3:00 PM - 7:00 PM
+Cursor Phases 1-3 (Backend & AI)
+MediaPipe integration
+7:00 PM - 10:00 PM
+Cursor Phases 4-5 (Bluetooth & AI Coach)
+RAG system setup
+Day 2 - August 15
+9:00 AM - 12:00 PM
+Hardware-software integration
+Exercise implementations
+Data fusion testing
+12:00 PM - 3:00 PM
+Internal testing
+Bug fixes
+Performance optimization
+3:00 PM - 6:00 PM
+Xcode build preparation
+TestFlight upload
+Beta tester invitations
+6:00 PM - 7:00 PM
+Final checks
+Documentation
+Team sync for beta sessions
+
+Emergency Priorities (If Time Runs Short)
+Must Have:
+One exercise working perfectly (Overhead Press)
+Basic sensor connection
+Form scoring display
+Voice feedback
+Can Defer:
+Other exercises
+Progress charts
+Video saving
+Advanced analytics
+
+This document provides the complete roadmap to achieve your beta testing goals by August 15. Follow the phases sequentially, use the prompts directly in Rork/Cursor, and maintain constant GitHub synchronization between team members.
+

@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Camera, X, RotateCw, Play, Pause, Check } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useWorkout } from "@/providers/WorkoutProvider";
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import PoseOverlay from '@/components/PoseOverlay';
+import { PoseData } from '@/lib/poseDetection';
+import AICoachingService, { WorkoutAnalysis, ExerciseContext } from '@/lib/aiCoaching';
+import VoiceFeedbackService from '@/lib/voiceFeedback';
 
 
 
@@ -18,9 +22,15 @@ export default function WorkoutScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [reps, setReps] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
-  const [formScore] = useState(85);
+  const [formScore, setFormScore] = useState(85);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [currentPose, setCurrentPose] = useState<PoseData | null>(null);
+  const [recentFeedback, setRecentFeedback] = useState<string[]>([]);
+  const [workoutAnalysis, setWorkoutAnalysis] = useState<WorkoutAnalysis | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const aiCoach = useRef(new AICoachingService());
+  const voiceService = useRef(new VoiceFeedbackService());
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
   const initializeWorkout = useCallback(() => {
     startWorkout(exerciseId as string);
@@ -32,6 +42,8 @@ export default function WorkoutScreen() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      // Clean up services
+      voiceService.current?.destroy();
     };
   }, [initializeWorkout]);
 
@@ -53,13 +65,73 @@ export default function WorkoutScreen() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleRecording = () => {
+  const handlePoseDetected = useCallback(async (poseData: PoseData) => {
+    setCurrentPose(poseData);
+    
+    // Create exercise context for AI analysis
+    const exerciseContext: ExerciseContext = {
+      exerciseType: exerciseId as string,
+      currentSet,
+      totalReps: reps,
+      userLevel: 'intermediate', // TODO: Get from user profile
+      previousFormScores: [formScore], // TODO: Track historical scores
+    };
+
+    try {
+      // Get AI analysis
+      const analysis = await aiCoach.current.analyzeWorkout(poseData, exerciseContext);
+      setWorkoutAnalysis(analysis);
+      
+      // Update form score
+      if (analysis.formScore !== formScore) {
+        setFormScore(Math.round(analysis.formScore));
+      }
+      
+      // Update rep count
+      if (analysis.repCount > 0) {
+        setReps(prev => prev + analysis.repCount);
+        // Provide voice feedback for rep completion
+        await voiceService.current.speakCoachingPhrase('rep_complete');
+      }
+      
+      // Process feedback
+      const visualFeedback = analysis.feedback
+        .filter(f => f.type === 'safety' || f.type === 'technique')
+        .map(f => f.message)
+        .slice(0, 2);
+      
+      setRecentFeedback(visualFeedback);
+      
+      // Handle voice feedback
+      for (const feedback of analysis.feedback) {
+        if (feedback.shouldSpeak) {
+          await voiceService.current.provideFeedback(
+            feedback.type === 'safety' ? 'safety' : 
+            feedback.type === 'encouragement' ? 'positive' : 'correction',
+            feedback.message
+          );
+        }
+      }
+      
+    } catch (error) {
+      console.error('AI coaching analysis error:', error);
+    }
+  }, [exerciseId, currentSet, reps, formScore]);
+
+  const handleFormAnalysis = useCallback((analysis: any) => {
+    // This is now handled in handlePoseDetected with AI coaching
+    // Keep for backwards compatibility with PoseOverlay
+  }, []);
+
+  const toggleRecording = async () => {
     setIsRecording(!isRecording);
     if (!isRecording) {
-      // Simulate rep counting
-      setTimeout(() => setReps(prev => prev + 1), 2000);
-      setTimeout(() => setReps(prev => prev + 1), 4000);
-      setTimeout(() => setReps(prev => prev + 1), 6000);
+      // Starting workout - provide encouragement
+      await voiceService.current.speakCoachingPhrase('setup_position');
+    } else {
+      // Stopping workout
+      setRecentFeedback([]);
+      voiceService.current.clearQueue();
     }
   };
 
@@ -67,7 +139,10 @@ export default function WorkoutScreen() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
-  const handleFinishSet = () => {
+  const handleFinishSet = async () => {
+    // Provide positive feedback for completing set
+    await voiceService.current.speakCoachingPhrase('finish_strong');
+    
     updateWorkoutData({
       sets: currentSet,
       totalReps: reps,
@@ -77,9 +152,14 @@ export default function WorkoutScreen() {
     setCurrentSet(prev => prev + 1);
     setReps(0);
     setIsRecording(false);
+    setRecentFeedback([]);
   };
 
   const handleEndWorkout = async () => {
+    // Stop all voice feedback
+    voiceService.current.clearQueue();
+    await voiceService.current.stopCurrentSpeech();
+    
     await endWorkout();
     router.replace('/workout-summary');
   };
@@ -143,10 +223,26 @@ export default function WorkoutScreen() {
             </View>
           </View>
 
-          {/* Pose Overlay Placeholder */}
-          <View style={styles.poseOverlay}>
-            <Text style={styles.poseOverlayText}>Pose tracking overlay</Text>
-          </View>
+          {/* Pose Overlay */}
+          <PoseOverlay
+            width={screenWidth}
+            height={screenHeight}
+            isActive={isRecording}
+            exerciseType={exerciseId as string}
+            onPoseDetected={handlePoseDetected}
+            onFormAnalysis={handleFormAnalysis}
+          />
+          
+          {/* Real-time Feedback */}
+          {recentFeedback.length > 0 && (
+            <View style={styles.feedbackContainer}>
+              {recentFeedback.map((feedback, index) => (
+                <View key={index} style={styles.feedbackCard}>
+                  <Text style={styles.feedbackText}>{feedback}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Bottom Controls */}
           <View style={styles.bottomControls}>
@@ -263,6 +359,27 @@ const styles = StyleSheet.create({
   poseOverlayText: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.3)',
+  },
+  feedbackContainer: {
+    position: 'absolute',
+    top: 120,
+    left: 20,
+    right: 20,
+    zIndex: 20,
+  },
+  feedbackCard: {
+    backgroundColor: 'rgba(255, 107, 53, 0.9)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',
+  },
+  feedbackText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
   bottomControls: {
     paddingHorizontal: 20,
