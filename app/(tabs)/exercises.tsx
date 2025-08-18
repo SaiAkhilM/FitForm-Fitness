@@ -5,8 +5,6 @@ import { ChevronRight, Zap, Target, Dumbbell } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-
-
 const exercises = [
   {
     id: 'tennis-serve',

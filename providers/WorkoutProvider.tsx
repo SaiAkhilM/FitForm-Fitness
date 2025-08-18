@@ -4,6 +4,9 @@ import { useUserProfile } from './UserProfileProvider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 
+// Get the supabase URL to check if we're using placeholder values
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+
 interface Workout {
   id: string;
   exerciseId: string;
@@ -31,41 +34,53 @@ export const [WorkoutProvider, useWorkout] = createContextHook(() => {
 
   const loadWorkouts = useCallback(async () => {
     try {
-      if (user) {
-        // Load from Supabase
-        const { data: workoutData, error } = await supabase
-          .from('workouts')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('started_at', { ascending: false });
-
-        if (error) {
-          console.error('Error loading workouts from Supabase:', error);
-          return;
-        }
-
-        if (workoutData) {
-          const mappedWorkouts: Workout[] = workoutData.map((dbWorkout: DatabaseWorkout) => ({
-            id: dbWorkout.id,
-            exerciseId: dbWorkout.exercise_type,
-            exerciseName: dbWorkout.exercise_name,
-            date: dbWorkout.started_at,
-            duration: dbWorkout.duration || 0,
-            sets: dbWorkout.sets || 0,
-            totalReps: dbWorkout.total_reps || 0,
-            averageFormScore: dbWorkout.average_form_score || 0,
-          }));
-          setWorkouts(mappedWorkouts);
-        }
-      } else {
-        // Fallback to local storage
+      // Check if Supabase is properly configured
+      if (supabaseUrl === 'https://placeholder.supabase.co' || !user) {
+        // Use local storage for development
         const stored = await AsyncStorage.getItem('@fitform_workouts');
         if (stored) {
           setWorkouts(JSON.parse(stored));
         }
+        setIsLoading(false);
+        return;
+      }
+
+      // Load from Supabase
+      const { data: workoutData, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('started_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading workouts from Supabase:', error);
+        return;
+      }
+
+      if (workoutData) {
+        const mappedWorkouts: Workout[] = workoutData.map((dbWorkout: DatabaseWorkout) => ({
+          id: dbWorkout.id,
+          exerciseId: dbWorkout.exercise_type,
+          exerciseName: dbWorkout.exercise_name,
+          date: dbWorkout.started_at,
+          duration: dbWorkout.duration || 0,
+          sets: dbWorkout.sets || 0,
+          totalReps: dbWorkout.total_reps || 0,
+          averageFormScore: dbWorkout.average_form_score || 0,
+        }));
+        setWorkouts(mappedWorkouts);
       }
     } catch (error) {
       console.error('Error loading workouts:', error);
+      // Fallback to local storage on error
+      try {
+        const stored = await AsyncStorage.getItem('@fitform_workouts');
+        if (stored) {
+          setWorkouts(JSON.parse(stored));
+        }
+      } catch (storageError) {
+        console.error('Error loading from storage:', storageError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -77,12 +92,13 @@ export const [WorkoutProvider, useWorkout] = createContextHook(() => {
 
   const saveWorkouts = useCallback(async (updatedWorkouts: Workout[]) => {
     try {
-      if (user) {
-        // Supabase updates are handled per workout, not batch
+      // Check if Supabase is properly configured
+      if (supabaseUrl === 'https://placeholder.supabase.co' || !user) {
+        // Use local storage for development
+        await AsyncStorage.setItem('@fitform_workouts', JSON.stringify(updatedWorkouts));
         setWorkouts(updatedWorkouts);
       } else {
-        // Fallback to local storage
-        await AsyncStorage.setItem('@fitform_workouts', JSON.stringify(updatedWorkouts));
+        // Supabase updates are handled per workout, not batch
         setWorkouts(updatedWorkouts);
       }
     } catch (error) {
@@ -98,37 +114,9 @@ export const [WorkoutProvider, useWorkout] = createContextHook(() => {
     };
 
     try {
-      if (user) {
-        // Create workout in Supabase
-        const workoutData: Database['public']['Tables']['workouts']['Insert'] = {
-          user_id: user.id,
-          exercise_type: exerciseId,
-          exercise_name: exerciseNames[exerciseId] || 'Unknown Exercise',
-          started_at: new Date().toISOString(),
-        };
-
-        const { data: newWorkout, error } = await supabase
-          .from('workouts')
-          .insert(workoutData)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        if (newWorkout) {
-          setCurrentWorkout({
-            id: newWorkout.id,
-            exerciseId: newWorkout.exercise_type,
-            exerciseName: newWorkout.exercise_name,
-            date: newWorkout.started_at,
-            duration: 0,
-            sets: 0,
-            totalReps: 0,
-            averageFormScore: 0,
-          });
-        }
-      } else {
-        // Fallback to local state
+      // Check if Supabase is properly configured
+      if (supabaseUrl === 'https://placeholder.supabase.co' || !user) {
+        // Use local state for development
         setCurrentWorkout({
           id: Date.now().toString(),
           exerciseId,
@@ -139,9 +127,50 @@ export const [WorkoutProvider, useWorkout] = createContextHook(() => {
           totalReps: 0,
           averageFormScore: 0,
         });
+        return;
+      }
+
+      // Create workout in Supabase
+      const workoutData: Database['public']['Tables']['workouts']['Insert'] = {
+        user_id: user.id,
+        exercise_type: exerciseId,
+        exercise_name: exerciseNames[exerciseId] || 'Unknown Exercise',
+        started_at: new Date().toISOString(),
+      };
+
+      const { data: newWorkout, error } = await supabase
+        .from('workouts')
+        .insert(workoutData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (newWorkout) {
+        setCurrentWorkout({
+          id: newWorkout.id,
+          exerciseId: newWorkout.exercise_type,
+          exerciseName: newWorkout.exercise_name,
+          date: newWorkout.started_at,
+          duration: 0,
+          sets: 0,
+          totalReps: 0,
+          averageFormScore: 0,
+        });
       }
     } catch (error) {
       console.error('Error starting workout:', error);
+      // Fallback to local state on error
+      setCurrentWorkout({
+        id: Date.now().toString(),
+        exerciseId,
+        exerciseName: exerciseNames[exerciseId] || 'Unknown Exercise',
+        date: new Date().toISOString(),
+        duration: 0,
+        sets: 0,
+        totalReps: 0,
+        averageFormScore: 0,
+      });
     }
   }, [user]);
 
@@ -177,27 +206,38 @@ export const [WorkoutProvider, useWorkout] = createContextHook(() => {
     if (!currentWorkout || !currentWorkout.id) return;
 
     try {
-      if (user) {
-        // Finalize workout in Supabase
-        const { error } = await supabase
-          .from('workouts')
-          .update({ ended_at: new Date().toISOString() })
-          .eq('id', currentWorkout.id);
-
-        if (error) throw error;
-
-        // Reload workouts to get the completed one
-        await loadWorkouts();
-      } else {
-        // Fallback to local storage
+      // Check if Supabase is properly configured
+      if (supabaseUrl === 'https://placeholder.supabase.co' || !user) {
+        // Use local storage for development
         const completedWorkout = currentWorkout as Workout;
         const updatedWorkouts = [completedWorkout, ...workouts];
         await saveWorkouts(updatedWorkouts);
+        setCurrentWorkout(null);
+        return;
       }
 
+      // Finalize workout in Supabase
+      const { error } = await supabase
+        .from('workouts')
+        .update({ ended_at: new Date().toISOString() })
+        .eq('id', currentWorkout.id);
+
+      if (error) throw error;
+
+      // Reload workouts to get the completed one
+      await loadWorkouts();
       setCurrentWorkout(null);
     } catch (error) {
       console.error('Error ending workout:', error);
+      // Fallback to local storage on error
+      try {
+        const completedWorkout = currentWorkout as Workout;
+        const updatedWorkouts = [completedWorkout, ...workouts];
+        await saveWorkouts(updatedWorkouts);
+        setCurrentWorkout(null);
+      } catch (storageError) {
+        console.error('Error saving to storage:', storageError);
+      }
     }
   }, [currentWorkout, user, workouts, saveWorkouts, loadWorkouts]);
 

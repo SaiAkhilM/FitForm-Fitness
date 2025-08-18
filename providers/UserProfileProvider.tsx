@@ -4,6 +4,9 @@ import { supabase, Database } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 
+// Get the supabase URL to check if we're using placeholder values
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+
 interface UserProfile {
   name: string;
   age: number | null;
@@ -25,6 +28,18 @@ export const [UserProfileProvider, useUserProfile] = createContextHook(() => {
 
   const loadProfile = useCallback(async () => {
     try {
+      // Check if Supabase is properly configured
+      if (supabaseUrl === 'https://placeholder.supabase.co') {
+        // Use local storage only for development
+        const stored = await AsyncStorage.getItem('@fitform_user_profile');
+        if (stored) {
+          setProfile(JSON.parse(stored));
+          setIsOnboarded(true);
+        }
+        setIsLoading(false);
+        return;
+      }
+
       // First check if user is authenticated
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
@@ -66,6 +81,16 @@ export const [UserProfileProvider, useUserProfile] = createContextHook(() => {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+      // Fallback to local storage on error
+      try {
+        const stored = await AsyncStorage.getItem('@fitform_user_profile');
+        if (stored) {
+          setProfile(JSON.parse(stored));
+          setIsOnboarded(true);
+        }
+      } catch (storageError) {
+        console.error('Error loading from storage:', storageError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +145,11 @@ export const [UserProfileProvider, useUserProfile] = createContextHook(() => {
 
   const saveProfile = useCallback(async (newProfile: UserProfile) => {
     try {
-      if (user) {
+      // Check if Supabase is properly configured
+      if (supabaseUrl === 'https://placeholder.supabase.co' || !user) {
+        // Use local storage for development or when no user
+        await AsyncStorage.setItem('@fitform_user_profile', JSON.stringify(newProfile));
+      } else {
         // Save to Supabase
         const profileData: Database['public']['Tables']['profiles']['Insert'] = {
           user_id: user.id,
@@ -138,16 +167,21 @@ export const [UserProfileProvider, useUserProfile] = createContextHook(() => {
           .upsert(profileData, { onConflict: 'user_id' });
 
         if (error) throw error;
-      } else {
-        // Fallback to local storage during onboarding
-        await AsyncStorage.setItem('@fitform_user_profile', JSON.stringify(newProfile));
       }
 
       setProfile(newProfile);
       setIsOnboarded(true);
     } catch (error) {
       console.error('Error saving profile:', error);
-      throw error;
+      // Fallback to local storage on error
+      try {
+        await AsyncStorage.setItem('@fitform_user_profile', JSON.stringify(newProfile));
+        setProfile(newProfile);
+        setIsOnboarded(true);
+      } catch (storageError) {
+        console.error('Error saving to storage:', storageError);
+        throw storageError;
+      }
     }
   }, [user]);
 

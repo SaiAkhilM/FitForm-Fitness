@@ -1,4 +1,14 @@
-import { Audio } from 'expo-av';
+let Audio: any = null;
+
+try {
+  const expoAv = require('expo-av');
+  Audio = expoAv.Audio;
+  console.log('Successfully imported expo-av Audio');
+} catch (error) {
+  console.warn('Failed to import expo-av Audio:', error);
+}
+
+import { Platform } from 'react-native';
 
 export interface VoiceConfig {
   voiceId: string;
@@ -19,6 +29,7 @@ export class VoiceFeedbackService {
   private currentSound: Audio.Sound | null = null;
   private speechQueue: VoiceFeedbackOptions[] = [];
   private isSpeaking = false;
+  private audioAvailable = false;
   
   private defaultVoiceConfig: VoiceConfig = {
     voiceId: 'ErXwobaYiN019PkySvjV', // Antoni voice - clear and energetic
@@ -34,11 +45,21 @@ export class VoiceFeedbackService {
       this.isEnabled = false;
     }
     
-    this.initializeAudio();
+    // Initialize audio asynchronously to avoid blocking
+    setTimeout(() => {
+      this.initializeAudio();
+    }, 0);
   }
 
   private async initializeAudio(): Promise<void> {
     try {
+      // Check if Audio is available
+      if (!Audio || typeof Audio === 'undefined' || !Audio.setAudioModeAsync) {
+        console.warn('Audio API not available on this platform');
+        this.audioAvailable = false;
+        return;
+      }
+
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: false,
@@ -46,13 +67,24 @@ export class VoiceFeedbackService {
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
+      this.audioAvailable = true;
+      console.log('Audio system initialized');
     } catch (error) {
       console.error('Failed to initialize audio:', error);
+      this.audioAvailable = false;
     }
   }
 
   async speak(options: VoiceFeedbackOptions): Promise<void> {
-    if (!this.isEnabled || !options.text.trim()) return;
+    if (!this.isEnabled || !options.text.trim()) {
+      console.log(`[Voice Feedback]: ${options.text} (disabled or empty)`);
+      return;
+    }
+
+    // Ensure audio is initialized
+    if (!this.audioAvailable && Audio) {
+      await this.initializeAudio();
+    }
 
     // Handle interruption
     if (options.interrupt && this.isSpeaking) {
@@ -81,7 +113,7 @@ export class VoiceFeedbackService {
   }
 
   private async synthesizeAndPlay(text: string): Promise<void> {
-    if (!this.elevenLabsApiKey) {
+    if (!this.elevenLabsApiKey || !this.audioAvailable) {
       // Fallback to text-to-speech or audio file
       await this.playFallbackAudio(text);
       return;
@@ -136,6 +168,11 @@ export class VoiceFeedbackService {
   }
 
   private async playAudioData(audioData: ArrayBuffer): Promise<void> {
+    if (!this.audioAvailable || !Audio || !Audio.Sound) {
+      console.warn('Audio not available, using fallback');
+      return this.playFallbackAudio('Audio playback not available');
+    }
+
     try {
       // Convert ArrayBuffer to base64
       const base64Audio = this.arrayBufferToBase64(audioData);
@@ -162,7 +199,8 @@ export class VoiceFeedbackService {
       });
     } catch (error) {
       console.error('Audio playback error:', error);
-      throw error;
+      // Fallback to text logging
+      await this.playFallbackAudio('Audio playback failed');
     }
   }
 
@@ -179,16 +217,34 @@ export class VoiceFeedbackService {
     // For now, just log the text that would be spoken
     console.log(`[Voice Feedback]: ${text}`);
     
-    // TODO: Implement fallback TTS using device's built-in speech synthesis
-    // or pre-recorded audio files for common phrases
+    // Try to use browser's speech synthesis if available (web fallback)
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 0.8;
+        
+        return new Promise((resolve, reject) => {
+          utterance.onend = () => resolve();
+          utterance.onerror = (error) => {
+            console.error('Speech synthesis error:', error);
+            reject(error);
+          };
+          window.speechSynthesis.speak(utterance);
+        });
+      } catch (error) {
+        console.error('Speech synthesis failed:', error);
+      }
+    }
     
-    // Simulate speech duration
+    // Fallback to simulated speech duration
     const duration = Math.max(1000, text.length * 50); // Approximate reading time
     await new Promise(resolve => setTimeout(resolve, duration));
   }
 
   async stopCurrentSpeech(): Promise<void> {
-    if (this.currentSound) {
+    if (this.currentSound && this.audioAvailable) {
       try {
         await this.currentSound.stopAsync();
         await this.currentSound.unloadAsync();
@@ -255,6 +311,16 @@ export class VoiceFeedbackService {
   destroy(): void {
     this.stopCurrentSpeech();
     this.clearQueue();
+  }
+
+  // Get service status for debugging
+  getStatus(): { enabled: boolean; audioAvailable: boolean; isSpeaking: boolean; queueLength: number } {
+    return {
+      enabled: this.isEnabled,
+      audioAvailable: this.audioAvailable,
+      isSpeaking: this.isSpeaking,
+      queueLength: this.speechQueue.length,
+    };
   }
 }
 

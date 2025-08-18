@@ -30,6 +30,12 @@ export default function WorkoutScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const aiCoach = useRef(new AICoachingService());
   const voiceService = useRef(new VoiceFeedbackService());
+  
+  // Debug voice service status
+  useEffect(() => {
+    const status = voiceService.current.getStatus();
+    console.log('Voice service status:', status);
+  }, []);
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
   const initializeWorkout = useCallback(() => {
@@ -91,7 +97,11 @@ export default function WorkoutScreen() {
       if (analysis.repCount > 0) {
         setReps(prev => prev + analysis.repCount);
         // Provide voice feedback for rep completion
-        await voiceService.current.speakCoachingPhrase('rep_complete');
+        try {
+          await voiceService.current.speakCoachingPhrase('rep_complete');
+        } catch (error) {
+          console.error('Voice feedback error:', error);
+        }
       }
       
       // Process feedback
@@ -105,11 +115,15 @@ export default function WorkoutScreen() {
       // Handle voice feedback
       for (const feedback of analysis.feedback) {
         if (feedback.shouldSpeak) {
-          await voiceService.current.provideFeedback(
-            feedback.type === 'safety' ? 'safety' : 
-            feedback.type === 'encouragement' ? 'positive' : 'correction',
-            feedback.message
-          );
+          try {
+            await voiceService.current.provideFeedback(
+              feedback.type === 'safety' ? 'safety' : 
+              feedback.type === 'encouragement' ? 'positive' : 'correction',
+              feedback.message
+            );
+          } catch (error) {
+            console.error('Voice feedback error:', error);
+          }
         }
       }
       
@@ -127,7 +141,11 @@ export default function WorkoutScreen() {
     setIsRecording(!isRecording);
     if (!isRecording) {
       // Starting workout - provide encouragement
-      await voiceService.current.speakCoachingPhrase('setup_position');
+      try {
+        await voiceService.current.speakCoachingPhrase('setup_position');
+      } catch (error) {
+        console.error('Voice feedback error:', error);
+      }
     } else {
       // Stopping workout
       setRecentFeedback([]);
@@ -140,28 +158,52 @@ export default function WorkoutScreen() {
   };
 
   const handleFinishSet = async () => {
-    // Provide positive feedback for completing set
-    await voiceService.current.speakCoachingPhrase('finish_strong');
-    
-    updateWorkoutData({
-      sets: currentSet,
-      totalReps: reps,
-      averageFormScore: formScore,
-      duration: elapsedTime,
-    });
-    setCurrentSet(prev => prev + 1);
-    setReps(0);
-    setIsRecording(false);
-    setRecentFeedback([]);
+    try {
+      // Provide positive feedback for completing set
+      await voiceService.current.speakCoachingPhrase('finish_strong');
+      
+      // Update workout data
+      updateWorkoutData({
+        sets: currentSet,
+        totalReps: reps,
+        averageFormScore: formScore,
+        duration: elapsedTime,
+      });
+      
+      // Reset for next set
+      setCurrentSet(prev => prev + 1);
+      setReps(0);
+      setIsRecording(false);
+      setRecentFeedback([]);
+      
+      // Clear voice queue
+      voiceService.current.clearQueue();
+    } catch (error) {
+      console.error('Error finishing set:', error);
+    }
   };
 
   const handleEndWorkout = async () => {
-    // Stop all voice feedback
-    voiceService.current.clearQueue();
-    await voiceService.current.stopCurrentSpeech();
-    
-    await endWorkout();
-    router.replace('/workout-summary');
+    try {
+      // Stop all voice feedback
+      voiceService.current.clearQueue();
+      await voiceService.current.stopCurrentSpeech();
+      
+      // Stop recording if active
+      if (isRecording) {
+        setIsRecording(false);
+      }
+      
+      // End the workout
+      await endWorkout();
+      
+      // Navigate to summary
+      router.replace('/workout-summary');
+    } catch (error) {
+      console.error('Error ending workout:', error);
+      // Still try to navigate even if there's an error
+      router.replace('/workout-summary');
+    }
   };
 
   if (!permission) {
@@ -189,11 +231,12 @@ export default function WorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing}>
-        {/* Overlay UI */}
-        <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
-          {/* Top Bar */}
-          <View style={styles.topBar}>
+      <CameraView style={styles.camera} facing={facing} />
+      
+      {/* Overlay UI - positioned absolutely over camera */}
+      <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
             <TouchableOpacity style={styles.closeButton} onPress={handleEndWorkout}>
               <X size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -246,25 +289,34 @@ export default function WorkoutScreen() {
 
           {/* Bottom Controls */}
           <View style={styles.bottomControls}>
-            {isRecording && (
-              <TouchableOpacity style={styles.finishSetButton} onPress={handleFinishSet}>
-                <Check size={20} color="#FFFFFF" />
-                <Text style={styles.finishSetText}>Finish Set</Text>
+            <View style={styles.controlRow}>
+              {isRecording && (
+                <TouchableOpacity style={styles.finishSetButton} onPress={handleFinishSet}>
+                  <Check size={20} color="#FFFFFF" />
+                  <Text style={styles.finishSetText}>Finish Set</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity style={styles.recordButton} onPress={toggleRecording}>
+                <LinearGradient
+                  colors={isRecording ? ['#FF3B30', '#FF6B6B'] : ['#007AFF', '#0051D5']}
+                  style={styles.recordButtonGradient}
+                >
+                  {isRecording ? (
+                    <Pause size={32} color="#FFFFFF" fill="#FFFFFF" />
+                  ) : (
+                    <Play size={32} color="#FFFFFF" fill="#FFFFFF" />
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
-            )}
-            
-            <TouchableOpacity style={styles.recordButton} onPress={toggleRecording}>
-              <LinearGradient
-                colors={isRecording ? ['#FF3B30', '#FF6B6B'] : ['#007AFF', '#0051D5']}
-                style={styles.recordButtonGradient}
-              >
-                {isRecording ? (
-                  <Pause size={32} color="#FFFFFF" fill="#FFFFFF" />
-                ) : (
-                  <Play size={32} color="#FFFFFF" fill="#FFFFFF" />
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+
+              {isRecording && (
+                <TouchableOpacity style={styles.endWorkoutButton} onPress={handleEndWorkout}>
+                  <X size={20} color="#FFFFFF" />
+                  <Text style={styles.endWorkoutText}>End</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             {isRecording && (
               <View style={styles.recordingIndicator}>
@@ -274,7 +326,6 @@ export default function WorkoutScreen() {
             )}
           </View>
         </SafeAreaView>
-      </CameraView>
     </View>
   );
 }
@@ -287,7 +338,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   overlay: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'transparent',
   },
   topBar: {
@@ -295,7 +350,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   closeButton: {
     width: 40,
@@ -382,16 +438,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   bottomControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 40,
     alignItems: 'center',
+  },
+  controlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 300,
   },
   recordButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
     overflow: 'hidden',
-    marginBottom: 20,
   },
   recordButtonGradient: {
     flex: 1,
@@ -402,14 +468,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(52, 199, 89, 0.9)',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 25,
-    marginBottom: 20,
-    gap: 8,
+    gap: 6,
   },
   finishSetText: {
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  endWorkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 6,
+  },
+  endWorkoutText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -417,8 +496,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    position: 'absolute',
-    bottom: 110,
+    marginTop: 16,
   },
   recordingDot: {
     width: 8,
