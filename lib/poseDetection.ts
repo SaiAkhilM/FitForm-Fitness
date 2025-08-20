@@ -22,6 +22,8 @@ export interface PoseData {
     rightKnee: number;
   };
   confidence: number;
+  /** Optional 3D “world” landmarks (MediaPipe Tasks can provide these) */
+  worldLandmarks?: PoseLandmark[];
 }
 
 export interface FormAnalysis {
@@ -35,7 +37,7 @@ export interface FormAnalysis {
 
 // Pose landmarks indices (MediaPipe format)
 export const POSE_LANDMARKS = {
-  NOSE: 0,
+  /*NOSE: 0,
   LEFT_EYE_INNER: 1,
   LEFT_EYE: 2,
   LEFT_EYE_OUTER: 3,
@@ -45,7 +47,7 @@ export const POSE_LANDMARKS = {
   LEFT_EAR: 7,
   RIGHT_EAR: 8,
   MOUTH_LEFT: 9,
-  MOUTH_RIGHT: 10,
+  MOUTH_RIGHT: 10,*/
   LEFT_SHOULDER: 11,
   RIGHT_SHOULDER: 12,
   LEFT_ELBOW: 13,
@@ -70,12 +72,61 @@ export const POSE_LANDMARKS = {
   RIGHT_FOOT_INDEX: 32,
 };
 
+export interface PoseDetectionConfig {
+  modelComplexity: 0 | 1 | 2;
+  smoothLandmarks: boolean;
+  enableSegmentation: boolean;
+  smoothSegmentation: boolean;
+  minDetectionConfidence: number;
+  minTrackingConfidence: number;
+}
+
 export class PoseDetectionService {
+  private isInitialized = false;
   private isProcessing = false;
   private lastProcessTime = 0;
   private readonly minProcessInterval = 33; // ~30 FPS
+  private onResults: ((results: PoseData) => void) | null = null;
 
-  constructor() {}
+    constructor(
+        private config: PoseDetectionConfig = {
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          smoothSegmentation: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        }
+      ) {}
+    
+    async initialize(): Promise<void> {
+        // TODO: load Pose Landmarker (MediaPipe Tasks iOS) or TFLite model and prepare inference
+        this.isInitialized = true;
+        console.log('PoseDetectionService initialized (mock mode)');
+      }
+  
+    start(): void {
+        if (!this.isInitialized) return;
+        console.log('Pose detection started');
+        // TODO: hook camera frames (e.g., react-native-vision-camera frame processor) to detectPose()
+      }
+
+      stop(): void {
+        console.log('Pose detection stopped');
+        // TODO: unhook camera frames / stop inference loop
+      }
+
+      destroy(): void {
+        this.stop();
+        this.isInitialized = false;
+        // TODO: free native resources if any
+      }
+
+      setOnResults(callback: (results: PoseData) => void): void {
+        this.onResults = callback;
+      }
+    
+    
 
   // Mock pose detection for development
   // In production, this would interface with TensorFlow Lite or similar
@@ -90,80 +141,29 @@ export class PoseDetectionService {
     this.isProcessing = true;
     this.lastProcessTime = now;
 
-    try {
-      // Mock pose detection for now
-      // TODO: Replace with actual TensorFlow Lite model inference
-      const mockLandmarks = this.generateMockLandmarks();
-      
-      const poseData: PoseData = {
-        timestamp: now,
-        landmarks: mockLandmarks,
-        angles: this.calculateAngles(mockLandmarks),
-        confidence: 0.85,
-      };
+      try {
+            // TODO: Replace this with real inference output
+            const landmarks = this.generateMockLandmarks();
 
-      return poseData;
-    } catch (error) {
-      console.error('Pose detection error:', error);
-      return null;
-    } finally {
-      this.isProcessing = false;
-    }
-  }
+            const poseData: PoseData = {
+              timestamp: now,
+              landmarks,
+              angles: this.calculateAngles(landmarks),
+              confidence: 0.85,
+              // worldLandmarks: real backends can fill this
+            };
 
-  private generateMockLandmarks(): PoseLandmark[] {
-    // Generate realistic mock landmarks for a standing person
-    const landmarks: PoseLandmark[] = new Array(33).fill(null).map((_, index) => {
-      let x = 0.5, y = 0.5, z = 0;
-      
-      switch (index) {
-        case POSE_LANDMARKS.NOSE:
-          x = 0.5; y = 0.2; break;
-        case POSE_LANDMARKS.LEFT_SHOULDER:
-          x = 0.4; y = 0.3; break;
-        case POSE_LANDMARKS.RIGHT_SHOULDER:
-          x = 0.6; y = 0.3; break;
-        case POSE_LANDMARKS.LEFT_ELBOW:
-          x = 0.35; y = 0.5; break;
-        case POSE_LANDMARKS.RIGHT_ELBOW:
-          x = 0.65; y = 0.5; break;
-        case POSE_LANDMARKS.LEFT_WRIST:
-          x = 0.3; y = 0.7; break;
-        case POSE_LANDMARKS.RIGHT_WRIST:
-          x = 0.7; y = 0.7; break;
-        case POSE_LANDMARKS.LEFT_HIP:
-          x = 0.45; y = 0.65; break;
-        case POSE_LANDMARKS.RIGHT_HIP:
-          x = 0.55; y = 0.65; break;
-        case POSE_LANDMARKS.LEFT_KNEE:
-          x = 0.45; y = 0.8; break;
-        case POSE_LANDMARKS.RIGHT_KNEE:
-          x = 0.55; y = 0.8; break;
-        case POSE_LANDMARKS.LEFT_ANKLE:
-          x = 0.45; y = 0.95; break;
-        case POSE_LANDMARKS.RIGHT_ANKLE:
-          x = 0.55; y = 0.95; break;
-        default:
-          x = 0.5 + (Math.random() - 0.5) * 0.1;
-          y = 0.5 + (Math.random() - 0.5) * 0.1;
+            this.onResults?.(poseData);
+            return poseData;
+      } catch (e) {
+        console.error('Pose detection error:', e);
+        return null;
+      } finally {
+        this.isProcessing = false;
       }
+    }
 
-      // Add some realistic movement variation
-      x += (Math.random() - 0.5) * 0.02;
-      y += (Math.random() - 0.5) * 0.02;
-      z = (Math.random() - 0.5) * 0.1;
-
-      return {
-        x: Math.max(0, Math.min(1, x)),
-        y: Math.max(0, Math.min(1, y)),
-        z,
-        visibility: Math.random() * 0.3 + 0.7, // 0.7-1.0
-      };
-    });
-
-    return landmarks;
-  }
-
+    
   calculateAngles(landmarks: PoseLandmark[]): PoseData['angles'] {
     return {
       leftElbow: this.calculateAngle(
@@ -208,19 +208,21 @@ export class PoseDetectionService {
     const vector1 = {
       x: point1.x - point2.x,
       y: point1.y - point2.y,
+      z: point1.z - point2.z,
     };
 
     const vector2 = {
       x: point3.x - point2.x,
       y: point3.y - point2.y,
+      z: point3.z - point2.z,
     };
 
     // Calculate dot product
-    const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
+    const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
 
     // Calculate magnitudes
-    const magnitude1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y);
-    const magnitude2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y);
+    const magnitude1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y + vector1.z * vector1.z);
+    const magnitude2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y + vector2.z * vector2.z);
 
     if (magnitude1 === 0 || magnitude2 === 0) return 0;
 
@@ -251,79 +253,49 @@ export class PoseDetectionService {
     }
   }
 
-  private analyzeOverheadPress(
-    angles: PoseData['angles'], 
-    feedback: string[], 
-    corrections: FormAnalysis['corrections'], 
-    score: number
-  ): FormAnalysis {
-    // Check elbow positioning
-    if (angles.leftElbow < 90 || angles.rightElbow < 90) {
-      score -= 15;
-      corrections.push({
-        type: 'critical',
-        message: 'Keep your elbows at 90 degrees or higher during the press'
-      });
+    private analyzeOverheadPress(
+        angles: PoseData['angles'],
+        feedback: string[],
+        corrections: FormAnalysis['corrections'],
+        score: number
+      ): FormAnalysis {
+        if (angles.leftElbow < 90 || angles.rightElbow < 90) {
+          score -= 15;
+          corrections.push({ type: 'critical', message: 'Keep your elbows at 90° or higher during the press' });
+        }
+        const shoulderDiff = Math.abs(angles.leftShoulder - angles.rightShoulder);
+        if (shoulderDiff > 20) {
+          score -= 10;
+          corrections.push({ type: 'minor', message: 'Keep your shoulders level and aligned' });
+        }
+        if (angles.leftElbow > 120 && angles.rightElbow > 120) {
+          corrections.push({ type: 'good', message: 'Excellent full range of motion!' });
+        }
+        feedback.push('Focus on controlled movement');
+        return { score: Math.max(0, score), feedback, corrections };
+        }
+
+      private analyzeTennisServe(
+        _angles: PoseData['angles'],
+        feedback: string[],
+        corrections: FormAnalysis['corrections'],
+        _score: number
+      ): FormAnalysis {
+        feedback.push('Keep your toss consistent', 'Rotate your shoulders fully');
+        corrections.push({ type: 'good', message: 'Good shoulder rotation!' });
+        return { score: 88, feedback, corrections };
+      }
+
+      private analyzeBoxingCombo(
+        _angles: PoseData['angles'],
+        feedback: string[],
+        corrections: FormAnalysis['corrections'],
+        _score: number
+      ): FormAnalysis {
+        feedback.push('Keep your guard up', 'Rotate your hips with each punch');
+        corrections.push({ type: 'minor', message: 'Remember to snap your punches back quickly' });
+        return { score: 82, feedback, corrections };
+      }
     }
-
-    // Check shoulder alignment
-    const shoulderDifference = Math.abs(angles.leftShoulder - angles.rightShoulder);
-    if (shoulderDifference > 20) {
-      score -= 10;
-      corrections.push({
-        type: 'minor',
-        message: 'Keep your shoulders level and aligned'
-      });
-    }
-
-    // Good form encouragement
-    if (angles.leftElbow > 120 && angles.rightElbow > 120) {
-      corrections.push({
-        type: 'good',
-        message: 'Excellent full range of motion!'
-      });
-    }
-
-    feedback.push('Focus on controlled movement');
-    
-    return { score: Math.max(0, score), feedback, corrections };
-  }
-
-  private analyzeTennisServe(
-    angles: PoseData['angles'], 
-    feedback: string[], 
-    corrections: FormAnalysis['corrections'], 
-    score: number
-  ): FormAnalysis {
-    // Simplified tennis serve analysis
-    feedback.push('Keep your toss consistent');
-    feedback.push('Rotate your shoulders fully');
-    
-    corrections.push({
-      type: 'good',
-      message: 'Good shoulder rotation!'
-    });
-
-    return { score: 88, feedback, corrections };
-  }
-
-  private analyzeBoxingCombo(
-    angles: PoseData['angles'], 
-    feedback: string[], 
-    corrections: FormAnalysis['corrections'], 
-    score: number
-  ): FormAnalysis {
-    // Simplified boxing analysis
-    feedback.push('Keep your guard up');
-    feedback.push('Rotate your hips with each punch');
-    
-    corrections.push({
-      type: 'minor',
-      message: 'Remember to snap your punches back quickly'
-    });
-
-    return { score: 82, feedback, corrections };
-  }
-}
 
 export default PoseDetectionService;
