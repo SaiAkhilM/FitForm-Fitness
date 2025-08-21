@@ -66,20 +66,20 @@ FitForm Fitness revolutionizes fitness training by combining computer vision, Io
 ## 📸 Screenshots
 
 ### Onboarding & Profile Setup
-<img width="585" height="1266" alt="IMG_9081" src="https://github.com/user-attachments/assets/d4a3baf6-0c16-4acf-9b18-988f6d966773" />
+<img width="293" height="633" alt="IMG_9081" src="https://github.com/user-attachments/assets/d4a3baf6-0c16-4acf-9b18-988f6d966773" />
 
 
 ### Various Exercise Options 
-<img width="585" height="1266" alt="IMG_9087" src="https://github.com/user-attachments/assets/df043cb0-fdf8-4beb-94aa-cfe802b73da0" />
+<img width="293" height="633" alt="IMG_9087" src="https://github.com/user-attachments/assets/df043cb0-fdf8-4beb-94aa-cfe802b73da0" />
 
 
 
 ### Real-Time Workout Analysis  
-<img width="585" height="1266" alt="IMG_9085" src="https://github.com/user-attachments/assets/379cb792-e606-4323-9011-bbae6a871e96" />
+<img width="293" height="633" alt="IMG_9085" src="https://github.com/user-attachments/assets/379cb792-e606-4323-9011-bbae6a871e96" />
 
 
 ### Progress Analytics
-<img width="585" height="1266" alt="IMG_9086" src="https://github.com/user-attachments/assets/f5368787-35a5-48fa-9c64-f4a9d53ef7ac" />
+<img width="293" height="633" alt="IMG_9086" src="https://github.com/user-attachments/assets/f5368787-35a5-48fa-9c64-f4a9d53ef7ac" />
 
 
 ## 🛠️ Technology Stack
